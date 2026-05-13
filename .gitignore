@@ -1,0 +1,15 @@
+# Secrets
+.env
+rclone/rclone.conf
+
+# Synced media (sourced from Google Drive)
+data/
+
+# App state (SQLite DBs, caches, transcodes, covers)
+config/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

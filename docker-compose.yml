@@ -1,0 +1,67 @@
+services:
+  rclone:
+    image: rclone/rclone:latest
+    container_name: rclone-sync
+    restart: unless-stopped
+    user: "${PUID}:${PGID}"
+    environment:
+      TZ: ${TZ}
+      RCLONE_CONFIG: /config/rclone/rclone.conf
+    volumes:
+      - ./rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - ./data/books:/data/books
+      - ./data/audiobooks:/data/audiobooks
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          echo "[$$(date -Iseconds)] syncing Books..."
+          rclone sync "${GDRIVE_REMOTE}:${GDRIVE_BOOKS_PATH}" /data/books \
+            --drive-skip-gdocs --transfers 4 --checkers 8 \
+            --log-level INFO || echo "books sync failed; will retry"
+          echo "[$$(date -Iseconds)] syncing Audiobooks..."
+          rclone sync "${GDRIVE_REMOTE}:${GDRIVE_AUDIOBOOKS_PATH}" /data/audiobooks \
+            --drive-skip-gdocs --transfers 4 --checkers 8 \
+            --log-level INFO || echo "audiobooks sync failed; will retry"
+          echo "[$$(date -Iseconds)] sleeping ${SYNC_INTERVAL_SECONDS}s"
+          sleep ${SYNC_INTERVAL_SECONDS}
+        done
+
+  kavita:
+    image: jvmilazz0/kavita:latest
+    container_name: kavita
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./config/kavita:/kavita/config
+      - ./data/books:/books:ro
+    expose:
+      - "5000"
+    ports:
+      - "127.0.0.1:5000:5000"
+
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./config/abs-config:/config
+      - ./config/abs-metadata:/metadata
+      - ./data/audiobooks:/audiobooks:ro
+    expose:
+      - "80"
+    ports:
+      - "127.0.0.1:13378:80"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - kavita
+      - audiobookshelf
