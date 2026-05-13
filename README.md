@@ -41,9 +41,12 @@ MyDrive/
 
 ```sh
 docker run --rm -it \
+  --user "$(id -u):$(id -g)" \
   -v "$PWD/rclone:/config/rclone" \
   rclone/rclone:latest config
 ```
+
+The `--user` flag is important — without it the container runs as root and the resulting `rclone.conf` ends up `root:root`, unreadable by the sync container.
 
 In the interactive menu:
 - `n` (new remote) → name: `gdrive` (must match `GDRIVE_REMOTE` in `.env`)
@@ -59,6 +62,7 @@ Verify:
 
 ```sh
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v "$PWD/rclone:/config/rclone:ro" \
   rclone/rclone:latest lsd gdrive:
 ```
