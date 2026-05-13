@@ -77,15 +77,25 @@ In Cloudflare dashboard → **Zero Trust** → **Networks** → **Tunnels** → 
 2. Name the tunnel (e.g. `home-books`)
 3. Copy the **token** shown on the "Install connector" page — paste into `.env` as `TUNNEL_TOKEN`
 4. Skip the install step (Docker handles it)
-5. **Public Hostname** tab → add two:
-   - `books.yourdomain.com` → Service: `HTTP` → URL: `kavita:5000`
-   - `audio.yourdomain.com` → Service: `HTTP` → URL: `audiobookshelf:80`
+5. **Public Hostname** tab → **Add a public hostname** twice:
+   - Subdomain `books`, Domain `yourdomain.com`, **Service URL** `http://kavita:5000`
+   - Subdomain `audio`, Domain `yourdomain.com`, **Service URL** `http://audiobookshelf:80`
+
+   Use the Docker service hostnames (`kavita`, `audiobookshelf`) — `cloudflared` runs in the same compose network and resolves them via Docker DNS. `localhost` would point at the cloudflared container itself and fail.
 
 ### 3. Configure `.env`
 
 ```sh
 cp .env.example .env
 # edit .env: TUNNEL_TOKEN, PUID/PGID (run `id -u` / `id -g`), TZ
+```
+
+### 4. Pre-create bind-mount directories
+
+Docker would otherwise auto-create them as `root:root` on first `up`, which breaks the rclone container (running as PUID:PGID) writing to `data/`.
+
+```sh
+mkdir -p config/{kavita,abs-config,abs-metadata} data/{books,audiobooks}
 ```
 
 ## Run
